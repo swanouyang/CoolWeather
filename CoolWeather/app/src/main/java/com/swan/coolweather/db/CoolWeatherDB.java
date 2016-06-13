@@ -8,8 +8,8 @@ import android.database.sqlite.SQLiteDatabase;
 import com.swan.coolweather.model.City;
 import com.swan.coolweather.model.County;
 import com.swan.coolweather.model.Province;
+import com.swan.coolweather.util.LogUtil;
 
-import java.net.PortUnreachableException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,6 +27,7 @@ public class CoolWeatherDB {
     private CoolWeatherDB(Context context) {
         CoolWeatherOpenHelper dbHelper = new CoolWeatherOpenHelper(context, DB_NAME, null, DB_VERSION);
         db = dbHelper.getWritableDatabase();
+        LogUtil.d("CoolWeatherDB", "Create db");
     }
 
     public synchronized static CoolWeatherDB getInstance(Context context) {
@@ -34,6 +35,24 @@ public class CoolWeatherDB {
             coolWeatherDB = new CoolWeatherDB(context);
         }
         return coolWeatherDB;
+    }
+    
+    public void beginTransaction() {
+    	if (db != null) {
+    		db.beginTransaction();
+    	}
+    }
+    
+    public void setTransactionSuccessful() {
+    	if (db != null) {
+    		db.setTransactionSuccessful();
+    	}
+    }
+    
+    public void endTransaction() {
+    	if (db != null) {
+    		db.endTransaction();
+    	}
     }
 
     public void saveProvince(Province province) {
@@ -93,14 +112,14 @@ public class CoolWeatherDB {
             ContentValues values = new ContentValues();
             values.put("county_name", county.getName());
             values.put("county_code", county.getCode());
-            values.put("province_id", county.getCityId());
+            values.put("city_id", county.getCityId());
             db.insert("County", null, values);
         }
     }
 
     public List<County> loadCounty(int cityId) {
         List<County> list = new ArrayList<County>();
-        Cursor cursor = db.query("County", null, "province_id = ?",
+        Cursor cursor = db.query("County", null, "city_id = ?",
                 new String[] {String.valueOf(cityId)}, null, null, null);
         if (cursor.moveToFirst()) {
             do {
