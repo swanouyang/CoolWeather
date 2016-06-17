@@ -2,6 +2,7 @@ package com.swan.coolweather.activity;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -18,6 +19,7 @@ import com.swan.coolweather.db.CoolWeatherDB;
 import com.swan.coolweather.model.City;
 import com.swan.coolweather.model.County;
 import com.swan.coolweather.model.Province;
+import com.swan.coolweather.util.JsonParserUtil;
 import com.swan.coolweather.util.LogUtil;
 import com.swan.coolweather.util.XmlParserUtil;
 
@@ -33,7 +35,7 @@ public class ChooseRegionActivity extends Activity {
     public static final int LEVEL_PROVINCE = 0;
     public static final int LEVEL_CITY = 1;
     public static final int LEVEL_COUNTY = 2;
-    
+
     private final static int XML_PARSE_FINSH = 1;
 
     private TextView titleText;
@@ -51,11 +53,21 @@ public class ChooseRegionActivity extends Activity {
     private City selectedCity;
 
     private int currentLevel;
+    private boolean isFromWeatherActivity;
 
     private MyHandler myHandler = null;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        isFromWeatherActivity = getIntent().getBooleanExtra(WeatherActivity.FROM_WEATHER_ACTIVITY, false);
+        if (JsonParserUtil.getCountySelected() && !isFromWeatherActivity) {
+            Intent intent = new Intent(this, WeatherActivity.class);
+            startActivity(intent);
+            finish();
+            return;
+        }
+
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.choose_area);
 
@@ -68,12 +80,12 @@ public class ChooseRegionActivity extends Activity {
 
         coolWeatherDB = CoolWeatherDB.getInstance(this);
         if (coolWeatherDB.loadProvince().size() <= 0) {
-	        showProgressDialog();
-	        myHandler = new MyHandler();
-	        MyRunnable myRunnable = new MyRunnable();
-	        new Thread(myRunnable).start();
+            showProgressDialog();
+            myHandler = new MyHandler();
+            MyRunnable myRunnable = new MyRunnable();
+            new Thread(myRunnable).start();
         } else {
-        	queryProvinces();
+            queryProvinces();
         }
 
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -85,33 +97,38 @@ public class ChooseRegionActivity extends Activity {
                 } else if (currentLevel == LEVEL_CITY) {
                     selectedCity = cityList.get(position);
                     queryCounties();
+                } else if (currentLevel == LEVEL_COUNTY) {
+                    Intent intent = new Intent(ChooseRegionActivity.this, WeatherActivity.class);
+                    intent.putExtra("County", countyList.get(position).getName());
+                    startActivity(intent);
+                    finish();
                 }
             }
         });
     }
-    
+
     class MyHandler extends Handler {
-    	@Override
-    	public void handleMessage(Message msg) {
-    		closeProgressDialog();
-    		queryProvinces();
-    	}
+        @Override
+        public void handleMessage(Message msg) {
+            closeProgressDialog();
+            queryProvinces();
+        }
     }
-    
+
     class MyRunnable implements Runnable {
-		@Override
-		public void run() {
-			try {
-				XmlParserUtil.handleXml(ChooseRegionActivity.this, coolWeatherDB);
-			} catch (XmlPullParserException e) {
-				e.printStackTrace();
-			}
-			Message msg = new Message();
-			msg.what = XML_PARSE_FINSH;
-			ChooseRegionActivity.this.myHandler.sendMessage(msg);
-		}
+        @Override
+        public void run() {
+            try {
+                XmlParserUtil.handleXml(ChooseRegionActivity.this, coolWeatherDB);
+            } catch (XmlPullParserException e) {
+                e.printStackTrace();
+            }
+            Message msg = new Message();
+            msg.what = XML_PARSE_FINSH;
+            ChooseRegionActivity.this.myHandler.sendMessage(msg);
+        }
     }
-    
+
 
     private void queryProvinces() {
         provinceList = coolWeatherDB.loadProvince();
@@ -126,7 +143,7 @@ public class ChooseRegionActivity extends Activity {
             titleText.setText("China");
             currentLevel = LEVEL_PROVINCE;
         } else {
-        	Toast.makeText(this, "加载省会列表失败...", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "加载省会列表失败...", Toast.LENGTH_SHORT).show();
         }
     }
     private void queryCities() {
@@ -141,7 +158,7 @@ public class ChooseRegionActivity extends Activity {
             titleText.setText(selectedProvince.getName());
             currentLevel = LEVEL_CITY;
         } else {
-        	Toast.makeText(this, "加载城市列表失败...", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "加载城市列表失败...", Toast.LENGTH_SHORT).show();
         }
     }
     private void queryCounties() {
@@ -156,23 +173,23 @@ public class ChooseRegionActivity extends Activity {
             titleText.setText(selectedCity.getName());
             currentLevel = LEVEL_COUNTY;
         } else {
-        	Toast.makeText(this, "加载县城列表失败...", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "加载县城列表失败...", Toast.LENGTH_SHORT).show();
         }
     }
-    
+
     private void showProgressDialog() {
-    	if (progressDialog == null) {
-    		progressDialog = new ProgressDialog(this);
-    		progressDialog.setMessage("正在加载城市列表...");
-    		progressDialog.setCanceledOnTouchOutside(false);
-    	}
-    	progressDialog.show();
+        if (progressDialog == null) {
+            progressDialog = new ProgressDialog(this);
+            progressDialog.setMessage("正在加载城市列表...");
+            progressDialog.setCanceledOnTouchOutside(false);
+        }
+        progressDialog.show();
     }
-    
+
     private void closeProgressDialog() {
-    	if (progressDialog != null) {
-    		progressDialog.dismiss();
-    	}
+        if (progressDialog != null) {
+            progressDialog.dismiss();
+        }
     }
 
     @Override
